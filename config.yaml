@@ -1,0 +1,13 @@
+config:
+  name: uploadServer # upload server name
+  directory: backups # upload directory
+  bodyLimit: 30 << 20 # << 20 is Mb(limit a request body cannot over 30M)
+  fileLimit: 5 << 20 # single file size cannot over 5M
+  types: # file Type support upload
+    - "image/jpeg"
+    - "image/jpg"
+    - "image/gif"
+    - "image/png"
+    - "application/pdf"
+    - "text/plain; charset=utf-8"
+    - "application/json"
