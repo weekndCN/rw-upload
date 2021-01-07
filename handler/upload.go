@@ -10,7 +10,9 @@ import (
 
 // UploadService .
 
-const limitSize = 2 * 1024 * 1024 // limit single file size
+const limitSize = -1     // limit single file size
+const maxBody = 32 << 20 // 32M limit body
+const readBuff = 512     // read buffer size
 
 // HandleUpload handler upload func
 func HandleUpload() http.HandlerFunc {
@@ -22,11 +24,11 @@ func HandleUpload() http.HandlerFunc {
 		// dirname, _ := vars["dirname"]
 
 		// limit body
-		r.Body = http.MaxBytesReader(w, r.Body, 30<<20+512)
+		r.Body = http.MaxBytesReader(w, r.Body, maxBody+512)
 
 		// limit buffer size 32M
 		// if overhead then store in disk the rest of data
-		r.ParseMultipartForm(32 << 20)
+		r.ParseMultipartForm(maxBody)
 		// if no file receive
 		if r.MultipartForm == nil {
 			log.Println("MultipartForm is null")
@@ -69,7 +71,7 @@ func HandleUpload() http.HandlerFunc {
 			defer f.Close()
 			// detech file type
 
-			buff := make([]byte, 512)
+			buff := make([]byte, readBuff)
 			_, err = f.Read(buff)
 
 			if err != nil {
@@ -82,7 +84,14 @@ func HandleUpload() http.HandlerFunc {
 			// limit file type
 			filetype := http.DetectContentType(buff)
 			switch filetype {
-			case "image/jpeg", "image/jpg", "image/gif", "image/png", "application/pdf", "text/plain; charset=utf-8":
+			case "image/jpeg",
+				"image/jpg",
+				"image/gif",
+				"image/png",
+				"application/pdf",
+				"text/plain; charset=utf-8",
+				"application/x-gzip",
+				"application/octet-stream":
 			default:
 				log.Printf("%s 文件的%s 格式不支持\n", file.Filename, filetype)
 				w.WriteHeader(http.StatusInternalServerError)
