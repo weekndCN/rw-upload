@@ -12,16 +12,11 @@ import (
 func Handler() http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/upload", handler.HandleUpload()).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/{name}", handler.HandleDownload()).Methods(http.MethodGet)
+	r.PathPrefix("/download").Handler(handler.HandleDownload()).S
+	// r.HandleFunc("/download/{name}", handler.HandleDownload()).Methods(http.MethodGet)
 	return r
 }
 
 func main() {
-	/**
-	r := mux.NewRouter()
-	r.HandleFunc("/upload", handler.HandleUpload()).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/{name}", handler.HandleDownload()).Methods(http.MethodGet)
-	log.Fatal(http.ListenAndServe(":9090", r))
-	*/
 	log.Fatal(http.ListenAndServe(":9090", Handler()))
 }

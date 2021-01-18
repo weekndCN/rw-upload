@@ -1,8 +1,7 @@
-package handler
+package api
 
 import (
 	"log"
-	"time"
 )
 
 // Progress progress bar
@@ -16,7 +15,6 @@ type Progress struct {
 // Instead of writing somewhere, it simply aggregates
 // the total bytes on each read
 func (pr *Progress) Write(p []byte) (n int, err error) {
-	time.Sleep(time.Second / 5)
 	n, err = len(p), nil
 	pr.BytesRead += int64(n)
 	pr.Print()

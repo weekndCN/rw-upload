@@ -1,29 +1,47 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path"
+
+	"github.com/weekndCN/rw-upload/api"
+	"github.com/weekndCN/rw-upload/render"
 )
 
 // UploadService .
-
-const limitSize = -1     // limit single file size
-const maxBody = 32 << 20 // 32M limit body
-const readBuff = 512     // read buffer size
+const (
+	limitSize = -1       // limit single file size
+	maxBody   = 32 << 20 // 32M limit body
+	readBuff  = 512      // read buffer size
+)
 
 // HandleUpload handler upload func
 func HandleUpload() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		//vars := mux.Vars(r)
-
 		// dirname, _ := vars["dirname"]
-
 		// limit body
+
+		baseDir := api.Basedir()
+		if baseDir == "" {
+			render.BadRequest(w, render.ErrNotFound)
+			return
+		}
+
+		staticPath := path.Join(baseDir, staticDir)
+		// temp files directory
+		tempPath := path.Join(baseDir, tmpDir)
+
+		err := os.MkdirAll(staticPath, os.ModePerm)
+		if err != nil {
+			log.Println(err.Error())
+			render.InternalError(w, err)
+			return
+		}
+
 		r.Body = http.MaxBytesReader(w, r.Body, maxBody+512)
 
 		// limit buffer size 32M
@@ -32,8 +50,7 @@ func HandleUpload() http.HandlerFunc {
 		// if no file receive
 		if r.MultipartForm == nil {
 			log.Println("MultipartForm is null")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("file not found in body"))
+			render.BadRequest(w, render.ErrNotFound)
 			return
 		}
 		// k is filename, v is fileheader pointer
@@ -46,16 +63,14 @@ func HandleUpload() http.HandlerFunc {
 			if limitSize > 0 {
 				if file.Size > limitSize {
 					log.Printf("%s 文件大小超过限制\n", file.Filename)
-					w.WriteHeader(http.StatusPreconditionFailed)
-					w.Write([]byte(fmt.Sprintf("%s 文件大小超过限制", file.Filename)))
+					render.BadRequest(w, render.ErrOverLimit)
 					return
 				}
 			}
 			// check name
 			if file.Filename == "" {
 				log.Printf("%s 文件名允许为空\n", file.Filename)
-				w.WriteHeader(http.StatusPreconditionFailed)
-				w.Write([]byte(fmt.Sprintf("%s 文件名允许为空", file.Filename)))
+				render.BadRequest(w, render.ErrEmptyName)
 				return
 			}
 
@@ -63,8 +78,7 @@ func HandleUpload() http.HandlerFunc {
 
 			if err != nil {
 				log.Printf("%s 文件打开失败\n", file.Filename)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				render.InternalError(w, err)
 				return
 			}
 
@@ -76,56 +90,53 @@ func HandleUpload() http.HandlerFunc {
 
 			if err != nil {
 				log.Printf("%s 文件读取失败\n", file.Filename)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				render.InternalError(w, err)
 				return
 			}
 
 			// limit file type
 			filetype := http.DetectContentType(buff)
-			switch filetype {
-			case "image/jpeg",
-				"image/jpg",
-				"image/gif",
-				"image/png",
-				"application/pdf",
-				"text/plain; charset=utf-8",
-				"application/x-gzip",
-				"application/octet-stream":
-			default:
-				log.Printf("%s 文件的%s 格式不支持\n", file.Filename, filetype)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("%s 文件的%s 格式不支持", file.Filename, filetype)))
-				return
-			}
+			/*
+				switch filetype {
+				case "image/jpeg",
+					"image/jpg",
+					"image/gif",
+					"image/png",
+					"application/pdf",
+					"text/plain; charset=utf-8",
+					"application/x-gzip",
+					"application/zip",
+					"application/octet-stream":
+				default:
+					log.Printf("%s 文件的%s 格式不支持\n", file.Filename, filetype)
+					render.NotImplemented(w, render.ErrFormatSupport)
+					return
+				}
+			*/
 
 			_, err = f.Seek(0, io.SeekStart)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				render.InternalError(w, err)
 				return
 			}
 
-			err = os.MkdirAll("./uploads", os.ModePerm)
-			if err != nil {
-				log.Println(err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
-				return
+			var fd *os.File
+			if filetype == "application/zip" {
+				fd, err = os.Create(path.Join(tempPath, file.Filename))
+			} else {
+				fd, err = os.Create(path.Join(staticPath, file.Filename))
 			}
 
-			fd, err := os.Create(fmt.Sprintf("./uploads/%s", file.Filename))
 			if err != nil {
 				log.Println(err.Error())
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(err.Error()))
+				render.BadRequest(w, err)
 				return
 			}
 
 			defer fd.Close()
 
 			// add progress bar
-			pr := &Progress{
+			pr := &api.Progress{
 				TotalSize: file.Size,
 				Name:      file.Filename,
 			}
@@ -133,13 +144,19 @@ func HandleUpload() http.HandlerFunc {
 			_, err = io.Copy(fd, io.TeeReader(f, pr))
 			if err != nil {
 				log.Println(err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				render.InternalError(w, err)
 				return
+			}
+
+			if filetype == "application/zip" {
+				fileName := path.Join(tempPath, file.Filename)
+				if err := api.Unzip(fileName, staticPath); err != nil {
+					log.Println(err.Error())
+				}
+				api.DelZip(fileName)
 			}
 		}
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("文件上传成功"))
+		render.JSON(w, "finished", 200)
 	}
 }
