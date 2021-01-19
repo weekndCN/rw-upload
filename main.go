@@ -11,8 +11,9 @@ import (
 // Handler .
 func Handler() http.Handler {
 	r := mux.NewRouter()
+	r.HandleFunc("/tree", handler.HandleTree()).Methods(http.MethodGet)
 	r.HandleFunc("/upload", handler.HandleUpload()).Methods(http.MethodPost, http.MethodOptions)
-	r.PathPrefix("/download").Handler(handler.HandleDownload()).S
+	r.PathPrefix("/download").Handler(handler.HandleDownload())
 	// r.HandleFunc("/download/{name}", handler.HandleDownload()).Methods(http.MethodGet)
 	return r
 }

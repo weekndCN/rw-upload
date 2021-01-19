@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"path"
 	"strings"
@@ -19,8 +18,10 @@ const (
 func HandleDownload() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get path file
-		name := strings.TrimPrefix(r.URL.Path, "/download/")
-		fmt.Println("name:", name)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/octet-stream")
+		name := strings.TrimPrefix(r.URL.Path, "/download/"+staticDir+"/")
+		w.Header().Set("Content-Disposition: attachment; filename=", name)
 
 		baseDir := api.Basedir()
 		if baseDir == "" {
@@ -34,7 +35,6 @@ func HandleDownload() http.HandlerFunc {
 		tempPath := path.Join(baseDir, tmpDir)
 		// request file full path
 		fullPath := path.Join(staticPath, name)
-
 		if !api.Exists(fullPath) {
 			render.BadRequest(w, render.ErrNotFound)
 			return
