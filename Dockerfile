@@ -5,6 +5,7 @@ FROM golang:1.14.3-alpine3.11 as builder
 # set up proxy
 ENV GO111MODULE=on \
     GOPROXY=https://goproxy.cn,direct
+
 WORKDIR /app
 COPY . .
 RUN GOOS=linux GOARCH=amd64 go build .
