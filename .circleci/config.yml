@@ -11,3 +11,4 @@ jobs:
       - run: |
           echo $DOCKER_PASSWD | docker login registry.cn-hangzhou.aliyuncs.com -u $DOCKER_USER --password-stdin 
           docker push $DOCKER_REPO:latest
+          
