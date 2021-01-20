@@ -1,26 +1,13 @@
-# Golang CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-go/ for more details
-version: 2
+version: 2.1
 jobs:
   build:
-    docker:
-      # specify the version
-      - image: circleci/golang:1.9
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
-
-    #### TEMPLATE_NOTE: go expects specific checkout path representing url
-    #### expecting it in the form of
-    ####   /go/src/github.com/circleci/go-tool
-    ####   /go/src/bitbucket.org/circleci/go-tool
-    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
     steps:
       - checkout
-
-      # specify any bash command here prefixed with `run: `
-      - run: go get -v -t -d ./...
-      - run: go test -v ./...
+      - setup_remote_docker:
+          version: 19.03.13
+          docker_layer_caching: true
+      # build and push Docker image
+      - run: docker build -t $DOCKER_REPO:latest .
+      - run: |
+          echo $DOCKER_PASSWD | docker login registry.cn-hangzhou.aliyuncs.com -u $DOCKER_USER --password-stdin 
+          docker push $DOCKER_REPO:latest
