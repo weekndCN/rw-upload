@@ -23,22 +23,11 @@ func HandleUpload() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//vars := mux.Vars(r)
 		// dirname, _ := vars["dirname"]
-		// limit body
+		var uploadPath string
 
-		baseDir := api.Basedir()
+		baseDir, staticPath, tempPath := api.Basedir(staticDir, tmpDir)
 		if baseDir == "" {
 			render.BadRequest(w, render.ErrNotFound)
-			return
-		}
-
-		staticPath := path.Join(baseDir, staticDir)
-		// temp files directory
-		tempPath := path.Join(baseDir, tmpDir)
-
-		err := os.MkdirAll(staticPath, os.ModePerm)
-		if err != nil {
-			log.Println(err.Error())
-			render.InternalError(w, err)
 			return
 		}
 
@@ -47,12 +36,27 @@ func HandleUpload() http.HandlerFunc {
 		// limit buffer size 32M
 		// if overhead then store in disk the rest of data
 		r.ParseMultipartForm(maxBody)
+		// limit body
 		// if no file receive
 		if r.MultipartForm == nil {
 			log.Println("MultipartForm is null")
 			render.BadRequest(w, render.ErrNotFound)
 			return
 		}
+
+		// if custom directory
+		dir := r.MultipartForm.Value["dir"][0]
+
+		uploadPath = path.Join(staticPath, dir)
+
+		err := os.MkdirAll(uploadPath, os.ModePerm)
+
+		if err != nil {
+			log.Println(err.Error())
+			render.InternalError(w, err)
+			return
+		}
+
 		// k is filename, v is fileheader pointer
 		// receiver data
 		// frontend must append file with name “file” ,avoid server loop map
@@ -124,7 +128,7 @@ func HandleUpload() http.HandlerFunc {
 			if filetype == "application/zip" {
 				fd, err = os.Create(path.Join(tempPath, file.Filename))
 			} else {
-				fd, err = os.Create(path.Join(staticPath, file.Filename))
+				fd, err = os.Create(path.Join(uploadPath, file.Filename))
 			}
 
 			if err != nil {

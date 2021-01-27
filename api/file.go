@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"os"
+	"path"
 )
 
 // Exists .
@@ -32,13 +33,14 @@ func IsFile(path string) bool {
 }
 
 // Basedir root Dir
-func Basedir() string {
+func Basedir(staticDir, tmpDir string) (baseDir string, staticPath string, tempPath string) {
 	baseDir, err := os.Getwd()
 	if err != nil {
 		log.Println(err.Error())
-		return ""
+		return "", "", ""
 	}
-	return baseDir
+	staticPath = path.Join(baseDir, staticDir)
+	// temp files directory
+	tempPath = path.Join(baseDir, tmpDir)
+	return
 }
-
-

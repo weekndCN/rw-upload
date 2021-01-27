@@ -20,19 +20,14 @@ func HandleDownload() http.HandlerFunc {
 		// get path file
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/octet-stream")
-		name := strings.TrimPrefix(r.URL.Path, "/download/"+staticDir+"/")
+		name := strings.TrimPrefix(r.URL.Path, "/download/")
 		w.Header().Set("Content-Disposition: attachment; filename=", name)
 
-		baseDir := api.Basedir()
+		baseDir, staticPath, tempPath := api.Basedir(staticDir, tmpDir)
 		if baseDir == "" {
 			render.BadRequest(w, render.ErrNotFound)
 			return
 		}
-
-		// static files directory
-		staticPath := path.Join(baseDir, staticDir)
-		// temp files directory
-		tempPath := path.Join(baseDir, tmpDir)
 		// request file full path
 		fullPath := path.Join(staticPath, name)
 		if !api.Exists(fullPath) {

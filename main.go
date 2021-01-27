@@ -14,7 +14,7 @@ func Handler() http.Handler {
 	r.HandleFunc("/tree", handler.HandleTree()).Methods(http.MethodGet)
 	r.HandleFunc("/upload", handler.HandleUpload()).Methods(http.MethodPost, http.MethodOptions)
 	r.PathPrefix("/download").Handler(handler.HandleDownload())
-	// r.HandleFunc("/download/{name}", handler.HandleDownload()).Methods(http.MethodGet)
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./uploads")))
 	return r
 }
 

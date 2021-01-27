@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
 
 	"github.com/weekndCN/rw-upload/api"
 	"github.com/weekndCN/rw-upload/render"
@@ -13,12 +12,11 @@ import (
 // HandleTree tree list view
 func HandleTree() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		baseDir := api.Basedir()
+		baseDir, staticPath, _ := api.Basedir(staticDir, "")
 		if baseDir == "" {
 			render.BadRequest(w, render.ErrNotFound)
 			return
 		}
-		staticPath := path.Join(baseDir, staticDir)
 		// if static not exists
 		err := os.MkdirAll(staticPath, os.ModePerm)
 		if err != nil {
